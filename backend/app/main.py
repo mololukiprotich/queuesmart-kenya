@@ -8,6 +8,8 @@ keeping them apart makes it obvious, when defending the design, which
 endpoints are "public" (any citizen) vs. which would need staff auth
 enforced before a real pilot.
 """
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -20,9 +22,15 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="QueueSmart Kenya API")
 
+# FRONTEND_ORIGINS: comma-separated list, e.g. "https://frontend-ebon-pi-95.vercel.app".
+# Unset (dev default) keeps the wildcard; set it once the real frontend URL
+# is known so a hosted deployment isn't wide open to any origin.
+_origins_env = os.environ.get("FRONTEND_ORIGINS")
+allow_origins = [o.strip() for o in _origins_env.split(",")] if _origins_env else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # dev only — tighten to the real frontend origin before pilot
+    allow_origins=allow_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

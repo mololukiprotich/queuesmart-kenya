@@ -4,9 +4,13 @@ Uses the browser's native Push API via VAPID auth, so delivery goes straight
 through the browser vendor's push service (Chrome -> FCM, Firefox -> Mozilla's,
 etc.) at no cost to us regardless of volume.
 
-vapid_private.pem is dev-only, generated once for this prototype. Before a
-real pilot: generate a fresh keypair and load the private key from an env
-var / secrets manager instead of a file checked next to the code.
+VAPID_PRIVATE_KEY env var takes priority (required on Render — the repo's
+local vapid_private.pem is gitignored on purpose, a hosted deploy never has
+it, and even if it did, Render's filesystem doesn't persist across deploys
+anyway). Falls back to the local .pem file for `uvicorn` on your own
+machine. Either way this is the *same* dev keypair generated for this
+prototype — regenerate a fresh one before a real pilot and keep it only in
+the hosting platform's secret store.
 """
 import json
 import os
@@ -17,9 +21,16 @@ from sqlalchemy.orm import Session
 from app import models
 
 _KEY_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "vapid_private.pem")
+_KEY_ENV_VAR = "VAPID_PRIVATE_KEY"
 
 VAPID_PUBLIC_KEY_B64URL = "BOfag50FvRxL4UIPlYAEo8R8R7lJLq27ppBJ5Y2uXLy7MNdmkzDnrG3-KYQYm8kwlhu-nt-DZj4a-yudr0f2JGQ"
 VAPID_CLAIMS = {"sub": "mailto:admin@queuesmart.ke"}
+
+
+def _vapid_private_key() -> str:
+    """pywebpush accepts either a file path or a raw base64url key string —
+    see its os.path.isfile() branch in webpush(). Env var wins when set."""
+    return os.environ.get(_KEY_ENV_VAR) or _KEY_PATH
 
 
 def send_push(db: Session, phone: str, title: str, body: str) -> None:
@@ -44,7 +55,7 @@ def send_push(db: Session, phone: str, title: str, body: str) -> None:
                     "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
                 },
                 data=payload,
-                vapid_private_key=_KEY_PATH,  # pywebpush accepts a file path directly
+                vapid_private_key=_vapid_private_key(),
                 vapid_claims=dict(VAPID_CLAIMS),
             )
         except WebPushException as e:

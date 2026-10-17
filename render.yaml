@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: queuesmart-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      # SQLite by default (resets on every deploy on the free plan — see
+      # README notes). Add a Render Postgres instance and set this to its
+      # Internal Database URL once persistence actually matters.
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_ORIGINS
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: WHATSAPP_ACCESS_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_OTP_TEMPLATE_NAME
+        sync: false
+      - key: WHATSAPP_OTP_LANG
+        sync: false
