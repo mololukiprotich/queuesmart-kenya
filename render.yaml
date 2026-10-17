@@ -7,6 +7,13 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
+      # Pinned — Render's default (3.14 at time of writing) has no
+      # prebuilt pydantic-core wheel yet, which forces a from-source Rust
+      # build that fails in Render's read-only cargo cache. 3.13 matches
+      # what this backend was built and tested against (see runtime.txt,
+      # kept too as a second signal Render's buildpack checks).
+      - key: PYTHON_VERSION
+        value: 3.13.4
       # SQLite by default (resets on every deploy on the free plan — see
       # README notes). Add a Render Postgres instance and set this to its
       # Internal Database URL once persistence actually matters.
