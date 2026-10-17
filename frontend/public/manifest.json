@@ -1,0 +1,13 @@
+{
+  "name": "QueueSmart Kenya",
+  "short_name": "QueueSmart",
+  "description": "Join a Huduma Centre service queue from your phone and get notified when it's your turn.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f7f4",
+  "theme_color": "#0b6e4f",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
