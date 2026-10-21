@@ -39,6 +39,11 @@ class Branch(Base):
     id = Column(String, primary_key=True, default=gen_id)
     name = Column(String, nullable=False)
     address = Column(String, nullable=True)
+    # Nullable — only needed for the "time to head to the centre" feature
+    # (see queue.py's travel-time estimate); a branch without coordinates
+    # set just never offers that feature, nothing else depends on this.
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
 
     services = relationship("Service", back_populates="branch", cascade="all, delete-orphan")
     counters = relationship("Counter", back_populates="branch", cascade="all, delete-orphan")

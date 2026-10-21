@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ShieldCheck, BellRing, BellOff, BadgeCheck, MessageCircle, TimerReset } from "lucide-react";
+import { ShieldCheck, BellRing, BellOff, BadgeCheck, MessageCircle, TimerReset, Navigation } from "lucide-react";
 import { api, wsUrlForService } from "../api";
 import { formatWait } from "../format";
 import { pushSupported, enablePushForPhone } from "../push";
 import { getCitizenSession, setCitizenSession, clearCitizenSession } from "../citizenSession";
+import { geolocationSupported, requestLocation, estimateTravelSeconds } from "../travel";
 import QueueOverview from "../components/QueueOverview";
 
 /**
@@ -29,6 +30,13 @@ export default function Citizen() {
   const [pushState, setPushState] = useState("idle"); // idle | enabling | on | denied | unsupported
   const [thresholdsBusy, setThresholdsBusy] = useState(false);
   const [initialPosition, setInitialPosition] = useState(null);
+
+  // "Time to head to the centre" — Phase 1 (see improvemnt.md 4.1):
+  // client-side only, no backend round trip, location never leaves this
+  // tab. travelState mirrors the push opt-in pattern for consistency.
+  const [travelState, setTravelState] = useState("idle"); // idle | requesting | on | denied | unsupported
+  const [travelSeconds, setTravelSeconds] = useState(null);
+  const [headOutFired, setHeadOutFired] = useState(false);
 
   // WhatsApp OTP verification — optional, layered on top of the plain
   // phone-number flow below. "verified" once this phone has passed OTP
@@ -135,9 +143,33 @@ export default function Citizen() {
     if (state?.ticket?.status === "waiting" && state.position > 0 && initialPosition === null) {
       setInitialPosition(state.position);
     }
-    if (!state?.ticket?.id) setInitialPosition(null); // reset between tickets
+    if (!state?.ticket?.id) {
+      setInitialPosition(null);
+      setHeadOutFired(false); // reset between tickets
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.ticket?.id, state?.position]);
+
+  // Fires once, client-side, the moment the live estimate drops to or
+  // below the travel estimate — reuses the same refetch-on-queue_update
+  // flow already driving the position/wait display above, no extra
+  // polling. Only shows a local notification if push permission is
+  // already granted (same permission Notification() needs); otherwise
+  // the in-page banner below is the only signal, which is why this is
+  // offered as a companion to, not a replacement for, the push opt-in.
+  useEffect(() => {
+    if (travelState !== "on" || headOutFired || !state?.ticket) return;
+    if (state.ticket.status !== "waiting") return;
+    if (state.estimated_wait_seconds > travelSeconds) return;
+
+    setHeadOutFired(true);
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      new Notification("Time to head to the centre", {
+        body: `Ticket ${state.ticket.number} — your wait is about as long as your trip here.`,
+        icon: "/favicon.svg",
+      });
+    }
+  }, [state, travelState, travelSeconds, headOutFired]);
 
   async function handleEnablePush() {
     if (!pushSupported()) {
@@ -147,6 +179,21 @@ export default function Citizen() {
     setPushState("enabling");
     const ok = await enablePushForPhone(state.ticket.phone);
     setPushState(ok ? "on" : "denied");
+  }
+
+  async function handleShareLocation(branch) {
+    if (!geolocationSupported()) {
+      setTravelState("unsupported");
+      return;
+    }
+    setTravelState("requesting");
+    const loc = await requestLocation();
+    if (!loc) {
+      setTravelState("denied");
+      return;
+    }
+    setTravelSeconds(estimateTravelSeconds(loc.lat, loc.lon, branch.latitude, branch.longitude));
+    setTravelState("on");
   }
 
   async function toggleThreshold(seconds) {
@@ -186,6 +233,8 @@ export default function Citizen() {
     const called = ticket.status !== "waiting";
     const isMultiVisit = visit_steps.length > 1;
     const progress = initialPosition ? Math.min(1, 1 - (position - 1) / initialPosition) : 0;
+    const currentBranch = branches.find((b) => b.id === branchId);
+    const hasBranchLocation = currentBranch?.latitude != null && currentBranch?.longitude != null;
     return (
       <div className="panel">
         <span className="eyebrow">{service_name}</span>
@@ -273,6 +322,29 @@ export default function Citizen() {
                   })}
                 </div>
               </div>
+            )}
+
+            {headOutFired && (
+              <div className="head-out-banner">
+                <Navigation size={15} strokeWidth={2.25} aria-hidden="true" />
+                Time to head to the centre — your wait is about as long as your trip here.
+              </div>
+            )}
+
+            {hasBranchLocation && travelState === "idle" && (
+              <button type="button" className="secondary travel-cta" onClick={() => handleShareLocation(currentBranch)}>
+                <Navigation size={15} strokeWidth={2.25} aria-hidden="true" />
+                Tell me when to leave
+              </button>
+            )}
+            {travelState === "requesting" && <p className="hint">Getting your location…</p>}
+            {travelState === "on" && !headOutFired && (
+              <p className="hint">
+                <Navigation size={14} strokeWidth={2.25} aria-hidden="true" /> About {formatWait(travelSeconds)} away — we'll flag it here when it's time to leave.
+              </p>
+            )}
+            {travelState === "denied" && (
+              <p className="hint push-off">Location unavailable — enable it in your browser settings to use this.</p>
             )}
           </>
         )}

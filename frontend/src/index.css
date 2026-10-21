@@ -319,6 +319,12 @@ button.call-next { width: 100%; padding: 1.4rem; font-size: 1.15rem; }
 .threshold-chip:hover { border-color: var(--accent); color: var(--text); }
 .threshold-chip-active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 
+.travel-cta { display: inline-flex; align-items: center; gap: 0.45rem; margin-top: 1rem; width: 100%; justify-content: center; }
+.head-out-banner {
+  display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; padding: 0.7rem 0.8rem;
+  border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: 0.85rem;
+}
+
 /* --- branch queue overview (citizen step + signage board) --- */
 .queue-overview { margin: 0.5rem 0 1.5rem; }
 .queue-overview-head {

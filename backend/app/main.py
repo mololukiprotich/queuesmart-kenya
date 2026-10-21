@@ -47,7 +47,10 @@ def seed():
     try:
         if db.query(models.Branch).count() > 0:
             return
-        branch = models.Branch(name="Huduma Centre GPO", address="GPO, Nairobi")
+        branch = models.Branch(
+            name="Huduma Centre GPO", address="GPO, Nairobi",
+            latitude=-1.2864, longitude=36.8172,  # real coordinates, GPO Nairobi
+        )
         db.add(branch)
         db.flush()
 
