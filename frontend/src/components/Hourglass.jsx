@@ -123,10 +123,14 @@ export default function Hourglass({ progress = 0, size = 88 }) {
         />
 
         {draining && (
+          // Thin glowing line + brighter dots — plain 1px circles were
+          // checked in an actual browser render and were essentially
+          // invisible at the size this renders at in the UI.
           <g className="hourglass-stream">
-            <circle cx="50" cy="72" r="1.3" fill="#ffd372" />
-            <circle cx="50" cy="76" r="1.1" fill="#f2a93c" />
-            <circle cx="50" cy="80" r="1.3" fill="#ffd372" />
+            <line x1="50" y1={NECK_Y - 6} x2="50" y2={NECK_Y + 6} stroke="#ffe3a3" strokeWidth="1.4" opacity="0.5" />
+            <circle cx="50" cy={NECK_Y - 3} r="2.4" fill="#ffe3a3" />
+            <circle cx="50" cy={NECK_Y + 1} r="2" fill="#ffd372" />
+            <circle cx="50" cy={NECK_Y + 5} r="2.4" fill="#ffe3a3" />
           </g>
         )}
       </g>

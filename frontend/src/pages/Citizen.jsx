@@ -277,7 +277,15 @@ export default function Citizen() {
     const { ticket, position, estimated_wait_seconds, service_name, visit_steps } = state;
     const called = ticket.status !== "waiting";
     const isMultiVisit = visit_steps.length > 1;
-    const progress = initialPosition ? Math.min(1, 1 - (position - 1) / initialPosition) : 0;
+    // Normalized so position===initialPosition (just joined) gives 0 and
+    // position===1 (next up) gives 1 — the previous "/initialPosition"
+    // version was off-by-one, showing the hourglass already half-drained
+    // the instant a citizen joined. Caught via an actual browser check,
+    // not math alone, since the geometry formulas were independently
+    // correct; it was the value feeding them that was wrong.
+    const progress = initialPosition > 1
+      ? Math.min(1, Math.max(0, (initialPosition - position) / (initialPosition - 1)))
+      : 0;
     const currentBranch = branches.find((b) => b.id === branchId);
     const hasBranchLocation = currentBranch?.latitude != null && currentBranch?.longitude != null;
     return (
@@ -332,7 +340,7 @@ export default function Citizen() {
             {pushState !== "on" && pushState !== "unsupported" && (
               <button
                 type="button"
-                className="secondary push-cta"
+                className="outline push-cta"
                 onClick={handleEnablePush}
                 disabled={pushState === "enabling"}
               >
@@ -384,7 +392,7 @@ export default function Citizen() {
             )}
 
             {hasBranchLocation && travelState === "idle" && (
-              <button type="button" className="secondary travel-cta" onClick={() => handleShareLocation(currentBranch)}>
+              <button type="button" className="outline travel-cta" onClick={() => handleShareLocation(currentBranch)}>
                 <Navigation size={15} strokeWidth={2.25} aria-hidden="true" />
                 Tell me when to leave
               </button>
@@ -484,7 +492,7 @@ export default function Citizen() {
         ) : (
           <button
             type="button"
-            className="secondary otp-cta"
+            className="outline otp-cta"
             onClick={sendOtp}
             disabled={otpBusy || phone.replace(/\D/g, "").length < 9}
           >

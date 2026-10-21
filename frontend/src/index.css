@@ -280,8 +280,13 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 button.primary, .form button[type="submit"] { background: var(--accent); color: white; box-shadow: var(--shadow-sm); }
 button.primary:hover, .form button[type="submit"]:hover { background: var(--accent-dark); box-shadow: var(--shadow-md); transform: translateY(-1px); }
 button.primary:active, .form button[type="submit"]:active { transform: scale(0.98) translateY(0); box-shadow: var(--shadow-sm); }
+/* .secondary = cautionary action (sign out, no-show) — reads as
+   danger-toned on purpose. .outline = same outlined shape, neutral
+   intent (opt-in features like push/OTP/location), NOT a warning. */
 button.secondary { background: var(--surface); color: var(--danger); border: 1px solid var(--border); }
 button.secondary:hover { background: var(--surface-2); }
+button.outline { background: var(--surface); color: var(--accent); border: 1px solid var(--border); }
+button.outline:hover { background: var(--accent-soft); border-color: var(--accent); }
 button.call-next { width: 100%; padding: 1.4rem; font-size: 1.15rem; }
 
 .ticket-number {
@@ -383,9 +388,12 @@ button.call-next { width: 100%; padding: 1.4rem; font-size: 1.15rem; }
 .counter-card-head { display: flex; align-items: center; gap: 0.4rem; color: var(--accent); margin-bottom: 0.3rem; }
 .counter-card-label { font-weight: 700; font-size: 0.88rem; color: var(--text); }
 .counter-card-services { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.6rem; min-height: 1.9em; }
-.counter-card-stats { display: flex; justify-content: space-between; align-items: baseline; font-variant-numeric: tabular-nums; }
-.counter-card-count { font-size: 0.8rem; color: var(--text-muted); }
-.counter-card-wait { font-size: 1rem; font-weight: 700; color: var(--text); }
+/* Column, not row — "under a minute" and similar longer formatWait()
+   strings were wrapping awkwardly against the count in a cramped
+   space-between row at the card's min-width (160px). */
+.counter-card-stats { display: flex; flex-direction: column; gap: 0.15rem; font-variant-numeric: tabular-nums; }
+.counter-card-count { font-size: 0.78rem; color: var(--text-muted); }
+.counter-card-wait { font-size: 1.05rem; font-weight: 700; color: var(--text); }
 
 @media (prefers-reduced-motion: reduce) {
   .queue-overview-skeleton { animation: none; }
