@@ -8,6 +8,7 @@ import { getCitizenSession, setCitizenSession, clearCitizenSession } from "../ci
 import { getSavedDetails, saveDetails, clearSavedDetails } from "../citizenDetails";
 import { geolocationSupported, requestLocation, bestTravelEstimateSeconds } from "../travel";
 import QueueOverview from "../components/QueueOverview";
+import Hourglass from "../components/Hourglass";
 
 /**
  * Citizen flow: pick branch -> pick service -> get a ticket -> watch live
@@ -286,8 +287,15 @@ export default function Citizen() {
           <div className="ticket-number">{ticket.number}</div>
         </div>
         {!called && initialPosition > 1 && (
-          <div className="progress-track" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
-            <div className="progress-fill" style={{ width: `${progress * 100}%` }} />
+          <div
+            className="hourglass-wrap"
+            role="progressbar"
+            aria-valuenow={Math.round(progress * 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Queue progress"
+          >
+            <Hourglass progress={progress} />
           </div>
         )}
 

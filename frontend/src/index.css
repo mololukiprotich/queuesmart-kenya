@@ -287,15 +287,22 @@ button.call-next { width: 100%; padding: 1.4rem; font-size: 1.15rem; }
   .ticket-pulse::before, .ticket-pulse::after { animation: none; display: none; }
 }
 
-.progress-track {
-  height: 6px; border-radius: 100px; background: var(--surface-2); overflow: hidden; margin-bottom: 1.2rem;
+/* --- hourglass waiting animation (replaces the old linear progress bar —
+   same `progress` data, a more legible and friendlier visual) --- */
+.hourglass-wrap { display: flex; justify-content: center; margin: 0.4rem 0 1.2rem; }
+.hourglass-sand-top, .hourglass-sand-bottom { transition: none; } /* snaps on real queue events, not continuous — see Hourglass.jsx */
+.hourglass-stream circle {
+  animation: hourglass-fall 0.9s linear infinite;
 }
-.progress-fill {
-  height: 100%; border-radius: 100px; background: var(--accent);
-  transition: width 0.6s ease;
+.hourglass-stream circle:nth-child(2) { animation-delay: 0.3s; }
+.hourglass-stream circle:nth-child(3) { animation-delay: 0.6s; }
+@keyframes hourglass-fall {
+  0% { opacity: 0; transform: translateY(-3px); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(6px); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .progress-fill { transition: none; }
+  .hourglass-stream { display: none; }
 }
 
 .stat-row { display: flex; gap: 1.5rem; margin-bottom: 1rem; }
