@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ShieldCheck, BellRing, BellOff, BadgeCheck, MessageCircle } from "lucide-react";
+import { ShieldCheck, BellRing, BellOff, BadgeCheck, MessageCircle, TimerReset } from "lucide-react";
 import { api, wsUrlForService } from "../api";
 import { formatWait } from "../format";
 import { pushSupported, enablePushForPhone } from "../push";
@@ -26,6 +26,7 @@ export default function Citizen() {
   const [state, setState] = useState(null); // QueueStateOut
   const [error, setError] = useState("");
   const [pushState, setPushState] = useState("idle"); // idle | enabling | on | denied | unsupported
+  const [thresholdsBusy, setThresholdsBusy] = useState(false);
 
   // WhatsApp OTP verification — optional, layered on top of the plain
   // phone-number flow below. "verified" once this phone has passed OTP
@@ -135,6 +136,22 @@ export default function Citizen() {
     setPushState(ok ? "on" : "denied");
   }
 
+  async function toggleThreshold(seconds) {
+    const current = state.ticket.notify_thresholds || [];
+    const next = current.includes(seconds)
+      ? current.filter((t) => t !== seconds)
+      : [...current, seconds];
+    setThresholdsBusy(true);
+    try {
+      const updatedTicket = await api.setNotifyThresholds(state.ticket.id, next);
+      setState((prev) => ({ ...prev, ticket: updatedTicket }));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setThresholdsBusy(false);
+    }
+  }
+
   async function joinQueue(e) {
     e.preventDefault();
     setError("");
@@ -206,6 +223,35 @@ export default function Citizen() {
             )}
             {pushState === "denied" && (
               <p className="hint push-off"><BellOff size={14} strokeWidth={2.25} aria-hidden="true" /> Notifications blocked — enable them in your browser settings to use this.</p>
+            )}
+
+            {pushState === "on" && estimated_wait_seconds > 600 && (
+              <div className="threshold-box">
+                <p className="hint threshold-hint">
+                  <TimerReset size={14} strokeWidth={2.25} aria-hidden="true" />
+                  Also notify me when the wait drops to:
+                </p>
+                <div className="threshold-options">
+                  {[
+                    { label: "20 min", seconds: 1200 },
+                    { label: "10 min", seconds: 600 },
+                  ].map((opt) => {
+                    const active = (ticket.notify_thresholds || []).includes(opt.seconds);
+                    return (
+                      <button
+                        key={opt.seconds}
+                        type="button"
+                        className={`threshold-chip ${active ? "threshold-chip-active" : ""}`}
+                        onClick={() => toggleThreshold(opt.seconds)}
+                        disabled={thresholdsBusy}
+                        aria-pressed={active}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </>
         )}

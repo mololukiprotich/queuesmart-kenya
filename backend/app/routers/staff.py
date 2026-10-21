@@ -16,6 +16,7 @@ from app.estimator import update_rolling_average
 from app.ws import manager
 from app.auth import hash_password, create_session, get_current_staff
 from app.push import send_push
+from app.routers.queue import check_notify_thresholds
 
 router = APIRouter()
 
@@ -65,6 +66,10 @@ async def call_next(counter_id: str, db: Session = Depends(get_db), _staff: mode
     await run_in_threadpool(
         send_push, db, ticket.phone, "It's your turn", f"Ticket {ticket.number} — please proceed to the counter."
     )
+    # Everyone still waiting in this service just moved up one position.
+    # check_notify_thresholds can call send_push (blocking) per ticket —
+    # offload it for the same reason as the call above.
+    await run_in_threadpool(check_notify_thresholds, db, ticket.service_id)
     return schemas.CallNextOut(ticket=ticket, message=f"Called {ticket.number}")
 
 
@@ -101,6 +106,10 @@ async def complete_ticket(ticket_id: str, db: Session = Depends(get_db), _staff:
     db.refresh(ticket)
 
     await manager.broadcast(ticket.service_id, {"type": "queue_update", "service_id": ticket.service_id})
+    # The just-fed rolling average can move the estimate for everyone still
+    # waiting, even though completing this ticket didn't change their
+    # position (it was already out of the "waiting" count once called).
+    await run_in_threadpool(check_notify_thresholds, db, ticket.service_id)
     return ticket
 
 
@@ -130,6 +139,9 @@ async def mark_no_show(ticket_id: str, db: Session = Depends(get_db), _staff: mo
     db.refresh(ticket)
 
     await manager.broadcast(ticket.service_id, {"type": "queue_update", "service_id": ticket.service_id})
+    # The no-show ticket moved to the back, so everyone who was behind it
+    # just moved up one position.
+    await run_in_threadpool(check_notify_thresholds, db, ticket.service_id)
     return ticket
 
 

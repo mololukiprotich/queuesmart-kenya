@@ -14,7 +14,7 @@ from app.database import get_db
 from app import models, schemas
 from app.estimator import estimate_wait_seconds
 from app.ws import manager
-from app.push import VAPID_PUBLIC_KEY_B64URL
+from app.push import VAPID_PUBLIC_KEY_B64URL, send_push
 
 router = APIRouter()
 
@@ -102,6 +102,53 @@ def build_queue_state(db: Session, ticket: models.Ticket) -> schemas.QueueStateO
         service_name=service.name,
         visit_steps=service.visit_steps,
     )
+
+
+def check_notify_thresholds(db: Session, service_id: str) -> None:
+    """
+    Called from every staff action that can shorten someone else's wait
+    (call_next / complete_ticket / mark_no_show in staff.py) — those are
+    the only events that ever move a threshold from "not yet crossed" to
+    "crossed," so there's no need for a separate poller/cron job.
+
+    For each waiting ticket in this service with unfired thresholds, fires
+    send_push for any threshold the new estimate has dropped to or below,
+    then records it as notified so it never fires twice.
+    """
+    service = db.query(models.Service).get(service_id)
+    if not service:
+        return
+    active = _active_counters(db, service_id)
+
+    # Filtered in Python, not SQL — a JSON-column inequality filter
+    # (notify_thresholds != []) isn't portable: Postgres's plain `json`
+    # type has no equality operator at all (would need jsonb). The
+    # per-branch waiting list is small, so this isn't a hot path.
+    waiting = (
+        db.query(models.Ticket)
+        .filter(
+            models.Ticket.service_id == service_id,
+            models.Ticket.status == models.TicketStatus.waiting,
+        )
+        .all()
+    )
+    for ticket in waiting:
+        if not ticket.notify_thresholds:
+            continue
+        pending = [t for t in ticket.notify_thresholds if t not in ticket.notified_thresholds]
+        if not pending:
+            continue
+        wait = estimate_wait_seconds(_position(db, ticket), active, service.avg_service_time_seconds)
+        newly_crossed = [t for t in pending if wait <= t]
+        if not newly_crossed:
+            continue
+        minutes = round(min(newly_crossed) / 60)
+        send_push(
+            db, ticket.phone, "Your wait is almost over",
+            f"Ticket {ticket.number} — estimated wait is now about {minutes} min.",
+        )
+        ticket.notified_thresholds = ticket.notified_thresholds + newly_crossed
+    db.commit()
 
 
 @router.get("/citizens/{phone}/profile", response_model=schemas.ProfileAutofillOut)
@@ -197,6 +244,28 @@ def get_ticket_state(ticket_id: str, db: Session = Depends(get_db)):
     if not ticket:
         raise HTTPException(404, "Ticket not found")
     return build_queue_state(db, ticket)
+
+
+@router.patch("/tickets/{ticket_id}/notify-thresholds", response_model=schemas.TicketOut)
+def set_notify_thresholds(ticket_id: str, payload: schemas.NotifyThresholdsIn, db: Session = Depends(get_db)):
+    """
+    Citizen opts in to "notify me when the wait drops to X" instead of only
+    the final "it's your turn" push. Resets notified_thresholds on every
+    call — if a citizen changes their selection, a threshold they'd already
+    crossed under the old selection shouldn't be silently suppressed under
+    the new one.
+    """
+    ticket = db.query(models.Ticket).get(ticket_id)
+    if not ticket:
+        raise HTTPException(404, "Ticket not found")
+    if ticket.status != models.TicketStatus.waiting:
+        raise HTTPException(400, "Can only set notify thresholds while waiting")
+
+    ticket.notify_thresholds = sorted(set(payload.thresholds_seconds), reverse=True)
+    ticket.notified_thresholds = []
+    db.commit()
+    db.refresh(ticket)
+    return ticket
 
 
 @router.websocket("/ws/services/{service_id}")

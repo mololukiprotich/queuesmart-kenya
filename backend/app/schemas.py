@@ -89,9 +89,14 @@ class TicketOut(BaseModel):
     issued_at: datetime
     called_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    notify_thresholds: list[int] = []
 
     class Config:
         from_attributes = True
+
+
+class NotifyThresholdsIn(BaseModel):
+    thresholds_seconds: list[int]  # e.g. [1200, 600] for 20min/10min
 
 
 class QueueStateOut(BaseModel):

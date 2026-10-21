@@ -142,6 +142,15 @@ class Ticket(Base):
     called_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
 
+    # Citizen-chosen "notify me when wait drops to X" thresholds, in seconds
+    # (e.g. [1200, 600] for 20min/10min), and which of those have already
+    # fired — JSON columns, matching the existing convention used by
+    # Counter.service_ids and Service.visit_steps rather than a new table
+    # for something this small. notified_thresholds prevents a threshold
+    # re-firing on every subsequent recompute once it's been sent once.
+    notify_thresholds = Column(JSON, default=list, nullable=False)
+    notified_thresholds = Column(JSON, default=list, nullable=False)
+
     service = relationship("Service", back_populates="tickets")
     case = relationship("Case", back_populates="tickets")
 

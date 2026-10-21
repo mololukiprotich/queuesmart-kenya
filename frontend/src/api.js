@@ -34,6 +34,11 @@ export const api = {
   createTicket: (service_id, phone, profile = {}) =>
     request("/tickets", { method: "POST", body: JSON.stringify({ service_id, phone, ...profile }) }),
   getTicketState: (ticketId) => request(`/tickets/${ticketId}`),
+  setNotifyThresholds: (ticketId, thresholdsSeconds) =>
+    request(`/tickets/${ticketId}/notify-thresholds`, {
+      method: "PATCH",
+      body: JSON.stringify({ thresholds_seconds: thresholdsSeconds }),
+    }),
   getProfileAutofill: (phone) => request(`/citizens/${encodeURIComponent(phone)}/profile`),
 
   getPushVapidPublicKey: () => request("/push/vapid-public-key"),
