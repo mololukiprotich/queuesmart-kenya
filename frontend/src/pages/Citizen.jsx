@@ -5,6 +5,7 @@ import { api, wsUrlForService } from "../api";
 import { formatWait } from "../format";
 import { pushSupported, enablePushForPhone } from "../push";
 import { getCitizenSession, setCitizenSession, clearCitizenSession } from "../citizenSession";
+import QueueOverview from "../components/QueueOverview";
 
 /**
  * Citizen flow: pick branch -> pick service -> get a ticket -> watch live
@@ -27,6 +28,7 @@ export default function Citizen() {
   const [error, setError] = useState("");
   const [pushState, setPushState] = useState("idle"); // idle | enabling | on | denied | unsupported
   const [thresholdsBusy, setThresholdsBusy] = useState(false);
+  const [initialPosition, setInitialPosition] = useState(null);
 
   // WhatsApp OTP verification — optional, layered on top of the plain
   // phone-number flow below. "verified" once this phone has passed OTP
@@ -126,6 +128,17 @@ export default function Citizen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.ticket?.id]);
 
+  // Baseline to measure progress-bar fill against — captured once per
+  // ticket, the first time it's seen waiting, so the bar counts down from
+  // wherever this citizen actually started rather than a fixed assumption.
+  useEffect(() => {
+    if (state?.ticket?.status === "waiting" && state.position > 0 && initialPosition === null) {
+      setInitialPosition(state.position);
+    }
+    if (!state?.ticket?.id) setInitialPosition(null); // reset between tickets
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state?.ticket?.id, state?.position]);
+
   async function handleEnablePush() {
     if (!pushSupported()) {
       setPushState("unsupported");
@@ -172,10 +185,18 @@ export default function Citizen() {
     const { ticket, position, estimated_wait_seconds, service_name, visit_steps } = state;
     const called = ticket.status !== "waiting";
     const isMultiVisit = visit_steps.length > 1;
+    const progress = initialPosition ? Math.min(1, 1 - (position - 1) / initialPosition) : 0;
     return (
       <div className="panel">
         <span className="eyebrow">{service_name}</span>
-        <div className="ticket-number">{ticket.number}</div>
+        <div className={`ticket-number-wrap ${!called ? "ticket-pulse" : ""}`}>
+          <div className="ticket-number">{ticket.number}</div>
+        </div>
+        {!called && initialPosition > 1 && (
+          <div className="progress-track" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
+            <div className="progress-fill" style={{ width: `${progress * 100}%` }} />
+          </div>
+        )}
 
         {isMultiVisit && (
           <div className="stepper" aria-label="Visit progress">
@@ -266,6 +287,7 @@ export default function Citizen() {
   return (
     <div className="panel">
       <span className="eyebrow">Join a queue</span>
+      {branchId && <QueueOverview branchId={branchId} />}
       <form onSubmit={joinQueue} className="form">
         <label>
           Branch

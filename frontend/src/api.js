@@ -31,6 +31,7 @@ async function request(path, options = {}, { auth = false } = {}) {
 export const api = {
   listBranches: () => request("/branches"),
   listServices: (branchId) => request(`/branches/${branchId}/services`),
+  getQueueOverview: (branchId) => request(`/branches/${branchId}/queue-overview`),
   createTicket: (service_id, phone, profile = {}) =>
     request("/tickets", { method: "POST", body: JSON.stringify({ service_id, phone, ...profile }) }),
   getTicketState: (ticketId) => request(`/tickets/${ticketId}`),

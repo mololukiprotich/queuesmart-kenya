@@ -6,6 +6,7 @@ import Citizen from "./pages/Citizen";
 import Staff from "./pages/Staff";
 import StaffLogin from "./pages/StaffLogin";
 import History from "./pages/History";
+import Board from "./pages/Board";
 
 const LINKS = [
   { to: "/citizen", label: "Join a queue", icon: Ticket },
@@ -77,6 +78,7 @@ export default function App() {
             <Route path="/history" element={<History />} />
             <Route path="/staff/login" element={<StaffLogin />} />
             <Route path="/staff" element={<Staff />} />
+            <Route path="/board/:branchId" element={<Board />} />
           </Routes>
         </div>
       </main>

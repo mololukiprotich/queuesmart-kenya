@@ -266,6 +266,36 @@ button.call-next { width: 100%; padding: 1.4rem; font-size: 1.15rem; }
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   margin: 0.3rem 0 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* Concentric pulse rings while waiting — echoes the brand mark's Radio
+   icon motif rather than being a generic spinner. Pure CSS, no library. */
+.ticket-number-wrap { position: relative; display: inline-block; }
+.ticket-pulse::before, .ticket-pulse::after {
+  content: ""; position: absolute; inset: -0.6rem -1.2rem;
+  border: 2px solid var(--accent); border-radius: 100px;
+  opacity: 0; animation: ticket-pulse-ring 2.4s ease-out infinite;
+}
+.ticket-pulse::after { animation-delay: 1.2s; }
+@keyframes ticket-pulse-ring {
+  0% { transform: scale(0.92); opacity: 0.5; }
+  100% { transform: scale(1.18); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticket-pulse::before, .ticket-pulse::after { animation: none; display: none; }
+}
+
+.progress-track {
+  height: 6px; border-radius: 100px; background: var(--surface-2); overflow: hidden; margin-bottom: 1.2rem;
+}
+.progress-fill {
+  height: 100%; border-radius: 100px; background: var(--accent);
+  transition: width 0.6s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .progress-fill { transition: none; }
 }
 
 .stat-row { display: flex; gap: 1.5rem; margin-bottom: 1rem; }
@@ -288,6 +318,46 @@ button.call-next { width: 100%; padding: 1.4rem; font-size: 1.15rem; }
 }
 .threshold-chip:hover { border-color: var(--accent); color: var(--text); }
 .threshold-chip-active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+/* --- branch queue overview (citizen step + signage board) --- */
+.queue-overview { margin: 0.5rem 0 1.5rem; }
+.queue-overview-head {
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;
+  font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.7rem;
+}
+.queue-overview-total { display: flex; align-items: center; gap: 0.35rem; font-weight: 600; color: var(--text); }
+.queue-overview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.7rem; }
+.queue-overview-skeleton {
+  height: 90px; border-radius: 10px; margin: 0.5rem 0 1.5rem;
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 37%, var(--surface-2) 63%);
+  background-size: 400% 100%; animation: skeleton-pulse 1.4s ease infinite;
+}
+@keyframes skeleton-pulse { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+
+.counter-card { border: 1px solid var(--border); border-radius: 10px; padding: 0.8rem 0.9rem; background: var(--surface); }
+.counter-card-head { display: flex; align-items: center; gap: 0.4rem; color: var(--accent); margin-bottom: 0.3rem; }
+.counter-card-label { font-weight: 700; font-size: 0.88rem; color: var(--text); }
+.counter-card-services { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.6rem; min-height: 1.9em; }
+.counter-card-stats { display: flex; justify-content: space-between; align-items: baseline; font-variant-numeric: tabular-nums; }
+.counter-card-count { font-size: 0.8rem; color: var(--text-muted); }
+.counter-card-wait { font-size: 1rem; font-weight: 700; color: var(--text); }
+
+@media (prefers-reduced-motion: reduce) {
+  .queue-overview-skeleton { animation: none; }
+}
+
+/* --- waiting-room signage board (/board/:branchId) --- */
+.board { width: 100%; max-width: 1100px; }
+.board-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1.5rem; }
+.board-brand { display: flex; align-items: center; gap: 0.5rem; font-weight: 800; font-size: 1.1rem; color: var(--accent); }
+.board-branch { font-size: 1.3rem; font-weight: 700; }
+.board .queue-overview-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.2rem; }
+.board .counter-card { padding: 1.4rem 1.5rem; }
+.board .counter-card-label { font-size: 1.1rem; }
+.board .counter-card-services { font-size: 0.85rem; min-height: 2.2em; }
+.board .counter-card-wait { font-size: 1.8rem; }
+.board .counter-card-count { font-size: 0.95rem; }
+.board .queue-overview-head { font-size: 1rem; }
 
 .otp-cta { display: inline-flex; align-items: center; gap: 0.45rem; justify-content: center; }
 .otp-verified {

@@ -62,6 +62,76 @@ def list_services(branch_id: str, db: Session = Depends(get_db)):
     return db.query(models.Service).filter(models.Service.branch_id == branch_id).all()
 
 
+@router.get("/branches/{branch_id}/queue-overview", response_model=schemas.BranchQueueOverviewOut)
+def branch_queue_overview(branch_id: str, db: Session = Depends(get_db)):
+    """
+    Public, read-only snapshot of every counter's current line at a branch —
+    "how long is each line, right now." No auth needed: this is the same
+    information a citizen would see by walking into the building and
+    looking, just available before they leave home. Built branch-shaped
+    (not ticket-shaped) specifically so it can also power a no-login
+    waiting-room signage screen, not just the citizen app.
+
+    Reuses the existing per-service estimator rather than inventing new
+    math: each counter's wait is computed as if it were the sole active
+    counter for a synthetic "service" whose average handling time is the
+    waiting-weighted mean of the real services it's assigned to (falling
+    back to a plain mean when nobody's waiting there yet).
+    """
+    counters = db.query(models.Counter).filter(models.Counter.branch_id == branch_id).all()
+    services = db.query(models.Service).filter(models.Service.branch_id == branch_id).all()
+    services_by_id = {s.id: s for s in services}
+
+    # Computed separately from the per-counter sum below, which would
+    # double-count a service assigned to more than one counter.
+    total_waiting = (
+        db.query(models.Ticket)
+        .filter(
+            models.Ticket.service_id.in_([s.id for s in services]),
+            models.Ticket.status == models.TicketStatus.waiting,
+        )
+        .count()
+    ) if services else 0
+
+    out = []
+    longest_wait = 0.0
+    for counter in counters:
+        service_ids = counter.service_ids or []
+        waiting_count = 0
+        weighted_time_sum = 0.0
+        plain_time_sum = 0.0
+        service_names = []
+        for sid in service_ids:
+            service = services_by_id.get(sid)
+            if not service:
+                continue
+            service_names.append(service.name)
+            plain_time_sum += service.avg_service_time_seconds
+            n = (
+                db.query(models.Ticket)
+                .filter(models.Ticket.service_id == sid, models.Ticket.status == models.TicketStatus.waiting)
+                .count()
+            )
+            waiting_count += n
+            weighted_time_sum += n * service.avg_service_time_seconds
+
+        avg_time = (
+            weighted_time_sum / waiting_count if waiting_count > 0
+            else (plain_time_sum / len(service_ids) if service_ids else 600.0)
+        )
+        wait = estimate_wait_seconds(waiting_count, 1, avg_time)
+
+        out.append(schemas.CounterOverviewOut(
+            counter_id=counter.id, label=counter.label, service_names=service_names,
+            waiting_count=waiting_count, estimated_wait_seconds=wait,
+        ))
+        longest_wait = max(longest_wait, wait)
+
+    return schemas.BranchQueueOverviewOut(
+        branch_id=branch_id, counters=out, total_waiting=total_waiting, longest_wait_seconds=longest_wait,
+    )
+
+
 def _active_counters(db: Session, service_id: str) -> int:
     """
     Counters currently assigned to this service. A proper pilot would track

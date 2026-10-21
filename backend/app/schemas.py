@@ -99,6 +99,22 @@ class NotifyThresholdsIn(BaseModel):
     thresholds_seconds: list[int]  # e.g. [1200, 600] for 20min/10min
 
 
+class CounterOverviewOut(BaseModel):
+    """One counter's current line, for the branch queue-overview board."""
+    counter_id: str
+    label: str
+    service_names: list[str]
+    waiting_count: int
+    estimated_wait_seconds: float  # wait for someone joining at the back right now
+
+
+class BranchQueueOverviewOut(BaseModel):
+    branch_id: str
+    counters: list[CounterOverviewOut]
+    total_waiting: int
+    longest_wait_seconds: float  # the worst-case line, i.e. "to the back of the queue"
+
+
 class QueueStateOut(BaseModel):
     """What a citizen's client polls/subscribes to for one ticket."""
     ticket: TicketOut
