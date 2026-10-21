@@ -5,7 +5,7 @@ import { api, wsUrlForService } from "../api";
 import { formatWait } from "../format";
 import { pushSupported, enablePushForPhone } from "../push";
 import { getCitizenSession, setCitizenSession, clearCitizenSession } from "../citizenSession";
-import { geolocationSupported, requestLocation, estimateTravelSeconds } from "../travel";
+import { geolocationSupported, requestLocation, bestTravelEstimateSeconds } from "../travel";
 import QueueOverview from "../components/QueueOverview";
 
 /**
@@ -36,6 +36,7 @@ export default function Citizen() {
   // tab. travelState mirrors the push opt-in pattern for consistency.
   const [travelState, setTravelState] = useState("idle"); // idle | requesting | on | denied | unsupported
   const [travelSeconds, setTravelSeconds] = useState(null);
+  const [travelSource, setTravelSource] = useState(null); // "traffic" | "estimate"
   const [headOutFired, setHeadOutFired] = useState(false);
 
   // WhatsApp OTP verification — optional, layered on top of the plain
@@ -192,7 +193,9 @@ export default function Citizen() {
       setTravelState("denied");
       return;
     }
-    setTravelSeconds(estimateTravelSeconds(loc.lat, loc.lon, branch.latitude, branch.longitude));
+    const { seconds, source } = await bestTravelEstimateSeconds(loc.lat, loc.lon, branch.latitude, branch.longitude);
+    setTravelSeconds(seconds);
+    setTravelSource(source);
     setTravelState("on");
   }
 
@@ -340,7 +343,8 @@ export default function Citizen() {
             {travelState === "requesting" && <p className="hint">Getting your location…</p>}
             {travelState === "on" && !headOutFired && (
               <p className="hint">
-                <Navigation size={14} strokeWidth={2.25} aria-hidden="true" /> About {formatWait(travelSeconds)} away — we'll flag it here when it's time to leave.
+                <Navigation size={14} strokeWidth={2.25} aria-hidden="true" />
+                About {formatWait(travelSeconds)} away{travelSource === "traffic" ? " (live traffic)" : ""} — we'll flag it here when it's time to leave.
               </p>
             )}
             {travelState === "denied" && (
