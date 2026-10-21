@@ -26,6 +26,12 @@
 
   --shadow-sm: 0 1px 2px rgba(10, 20, 14, 0.06);
   --shadow-md: 0 8px 24px -12px rgba(10, 20, 14, 0.18);
+  --shadow-lg: 0 16px 36px -14px rgba(10, 20, 14, 0.26);
+
+  /* Snappy-but-smooth "expo out" easing for hover/press feedback —
+     used consistently across cards/buttons instead of plain linear/ease,
+     so motion across the app reads as one system. */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -52,6 +58,7 @@
     --chart-text: #e9efe6;
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.35);
     --shadow-md: 0 8px 24px -12px rgba(0,0,0,0.55);
+    --shadow-lg: 0 16px 36px -14px rgba(0,0,0,0.65);
   }
 }
 :root[data-theme="dark"] {
@@ -77,6 +84,7 @@
   --chart-text: #e9efe6;
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.35);
   --shadow-md: 0 8px 24px -12px rgba(0,0,0,0.55);
+  --shadow-lg: 0 16px 36px -14px rgba(0,0,0,0.65);
 }
 
 * { box-sizing: border-box; }
@@ -200,6 +208,7 @@ a { color: inherit; }
 }
 
 .panel {
+  position: relative;
   width: 100%;
   max-width: 420px;
   background: var(--surface);
@@ -207,7 +216,20 @@ a { color: inherit; }
   border-radius: 12px;
   padding: 2rem;
   box-shadow: 0 1px 2px rgba(20,30,25,0.06), 0 8px 24px -12px rgba(20,30,25,0.12);
+  overflow: hidden;
 }
+/* One restrained glass-sheen touch on the app's primary surface — not
+   repeated everywhere, per the "use it surgically" principle: a thin
+   top highlight suggesting a glass edge catching light. */
+.panel::before {
+  content: "";
+  position: absolute; inset: 0 0 auto 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .panel::before { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent); }
+}
+:root[data-theme="dark"] .panel::before { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent); }
 
 .eyebrow {
   display: block;
@@ -255,8 +277,9 @@ button:active { transform: scale(0.98); }
 button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
-button.primary, .form button[type="submit"] { background: var(--accent); color: white; }
-button.primary:hover, .form button[type="submit"]:hover { background: var(--accent-dark); }
+button.primary, .form button[type="submit"] { background: var(--accent); color: white; box-shadow: var(--shadow-sm); }
+button.primary:hover, .form button[type="submit"]:hover { background: var(--accent-dark); box-shadow: var(--shadow-md); transform: translateY(-1px); }
+button.primary:active, .form button[type="submit"]:active { transform: scale(0.98) translateY(0); box-shadow: var(--shadow-sm); }
 button.secondary { background: var(--surface); color: var(--danger); border: 1px solid var(--border); }
 button.secondary:hover { background: var(--surface-2); }
 button.call-next { width: 100%; padding: 1.4rem; font-size: 1.15rem; }
@@ -347,7 +370,16 @@ button.call-next { width: 100%; padding: 1.4rem; font-size: 1.15rem; }
 }
 @keyframes skeleton-pulse { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
 
-.counter-card { border: 1px solid var(--border); border-radius: 10px; padding: 0.8rem 0.9rem; background: var(--surface); }
+.counter-card {
+  border: 1px solid var(--border); border-radius: 10px; padding: 0.8rem 0.9rem; background: var(--surface);
+  transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease), border-color 0.35s var(--ease);
+  animation: fade-up 0.4s var(--ease) both;
+}
+.counter-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--accent); }
+.queue-overview-grid .counter-card:nth-child(1) { animation-delay: 0.02s; }
+.queue-overview-grid .counter-card:nth-child(2) { animation-delay: 0.08s; }
+.queue-overview-grid .counter-card:nth-child(3) { animation-delay: 0.14s; }
+.queue-overview-grid .counter-card:nth-child(4) { animation-delay: 0.2s; }
 .counter-card-head { display: flex; align-items: center; gap: 0.4rem; color: var(--accent); margin-bottom: 0.3rem; }
 .counter-card-label { font-weight: 700; font-size: 0.88rem; color: var(--text); }
 .counter-card-services { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.6rem; min-height: 1.9em; }
@@ -357,6 +389,8 @@ button.call-next { width: 100%; padding: 1.4rem; font-size: 1.15rem; }
 
 @media (prefers-reduced-motion: reduce) {
   .queue-overview-skeleton { animation: none; }
+  .counter-card { animation: none; transition: none; }
+  .counter-card:hover { transform: none; }
 }
 
 /* --- waiting-room signage board (/board/:branchId) --- */
@@ -431,7 +465,11 @@ button.call-next { width: 100%; padding: 1.4rem; font-size: 1.15rem; }
 .stepper-item[data-state="current"] .stepper-label { color: var(--text); font-weight: 600; }
 
 /* --- case timeline (history page) --- */
-.case-card { border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.2rem; margin-bottom: 1rem; }
+.case-card {
+  border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.2rem; margin-bottom: 1rem;
+  transition: box-shadow 0.35s var(--ease), border-color 0.35s var(--ease);
+}
+.case-card:hover { box-shadow: var(--shadow-sm); border-color: var(--accent); }
 .case-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.9rem; }
 .case-service { font-weight: 700; }
 
@@ -465,7 +503,16 @@ button.call-next { width: 100%; padding: 1.4rem; font-size: 1.15rem; }
 
 /* --- admin dashboard --- */
 .stat-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.8rem; margin: 0.5rem 0 1.75rem; }
-.stat-tile { border: 1px solid var(--border); border-radius: 10px; padding: 0.9rem 1rem; }
+.stat-tile {
+  border: 1px solid var(--border); border-radius: 10px; padding: 0.9rem 1rem;
+  transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease);
+  animation: fade-up 0.4s var(--ease) both;
+}
+.stat-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.stat-tiles .stat-tile:nth-child(1) { animation-delay: 0.02s; }
+.stat-tiles .stat-tile:nth-child(2) { animation-delay: 0.07s; }
+.stat-tiles .stat-tile:nth-child(3) { animation-delay: 0.12s; }
+.stat-tiles .stat-tile:nth-child(4) { animation-delay: 0.17s; }
 .stat-tile-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 600; }
 .stat-tile-value { font-size: 1.7rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 0.2rem; }
 .stat-tile-sub { font-size: 0.72rem; color: var(--text-muted); }
@@ -505,9 +552,10 @@ td.mono { font-variant-numeric: tabular-nums; }
   text-align: left; text-decoration: none; color: var(--text);
   background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
   padding: 1.6rem 1.5rem; box-shadow: var(--shadow-sm);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease), border-color 0.35s var(--ease);
 }
-.welcome-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.welcome-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+.welcome-card:active { transform: translateY(-1px) scale(0.99); }
 .welcome-card-icon { display: flex; margin-bottom: 0.4rem; color: var(--accent); }
 .welcome-card-secondary .welcome-card-icon { color: var(--maroon); }
 .welcome-card-title { font-size: 1.12rem; font-weight: 700; }
