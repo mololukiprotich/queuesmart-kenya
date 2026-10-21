@@ -365,6 +365,13 @@ button.call-next { width: 100%; padding: 1.4rem; font-size: 1.15rem; }
 .board .counter-card-count { font-size: 0.95rem; }
 .board .queue-overview-head { font-size: 1rem; }
 
+.remembered-banner {
+  display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; font-weight: 600;
+  color: var(--accent); background: var(--accent-soft); border-radius: 8px;
+  padding: 0.6rem 0.8rem; margin-bottom: 1rem;
+}
+.remembered-banner span { flex: 1; font-weight: 500; }
+
 .otp-cta { display: inline-flex; align-items: center; gap: 0.45rem; justify-content: center; }
 .otp-verified {
   display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600;

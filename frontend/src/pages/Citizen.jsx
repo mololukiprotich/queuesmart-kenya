@@ -5,6 +5,7 @@ import { api, wsUrlForService } from "../api";
 import { formatWait } from "../format";
 import { pushSupported, enablePushForPhone } from "../push";
 import { getCitizenSession, setCitizenSession, clearCitizenSession } from "../citizenSession";
+import { getSavedDetails, saveDetails, clearSavedDetails } from "../citizenDetails";
 import { geolocationSupported, requestLocation, bestTravelEstimateSeconds } from "../travel";
 import QueueOverview from "../components/QueueOverview";
 
@@ -48,7 +49,36 @@ export default function Citizen() {
   const [otpDebugCode, setOtpDebugCode] = useState(""); // dev-mode only, see backend otp.py
   const [otpBusy, setOtpBusy] = useState(false);
 
+  const [detailsRemembered, setDetailsRemembered] = useState(false);
+
   const wsRef = useRef(null);
+
+  // Remembered details from a prior visit (see citizenDetails.js) —
+  // prefills everything so a returning citizen only has to pick a
+  // service, not re-type their phone/name/ID/email each time. Lower
+  // assurance than the OTP session below (no server round trip, nothing
+  // re-verified) — purely a local convenience for what they already typed
+  // and consented to once.
+  useEffect(() => {
+    const saved = getSavedDetails();
+    if (!saved) return;
+    if (saved.branchId) setBranchId(saved.branchId);
+    if (saved.phone) setPhone(saved.phone);
+    if (saved.fullName) setFullName(saved.fullName);
+    if (saved.nationalId) setNationalId(saved.nationalId);
+    if (saved.email) setEmail(saved.email);
+    if (saved.consent) setConsent(true);
+    setDetailsRemembered(true);
+  }, []);
+
+  function forgetSavedDetails() {
+    clearSavedDetails();
+    setDetailsRemembered(false);
+    setFullName("");
+    setNationalId("");
+    setEmail("");
+    setConsent(false);
+  }
 
   // Restore a previously verified phone from localStorage — re-validated
   // against the backend (a token surviving locally doesn't mean the
@@ -226,6 +256,17 @@ export default function Citizen() {
         consent_given: consent,
       });
       setState(result);
+      // Remember for next visit — phone/branch always (needed for the
+      // "just pick a service" flow), the rest only if consent was given,
+      // mirroring what's allowed to be saved server-side.
+      saveDetails({
+        branchId,
+        phone,
+        fullName: consent ? fullName : "",
+        nationalId: consent ? nationalId : "",
+        email: consent ? email : "",
+        consent,
+      });
     } catch (e) {
       setError(e.message);
     }
@@ -363,6 +404,13 @@ export default function Citizen() {
   return (
     <div className="panel">
       <span className="eyebrow">Join a queue</span>
+      {detailsRemembered && (
+        <div className="remembered-banner">
+          <BadgeCheck size={14} strokeWidth={2.25} aria-hidden="true" />
+          <span>Welcome back — your details are filled in. Just pick a service.</span>
+          <button type="button" className="otp-link" onClick={forgetSavedDetails}>Not you?</button>
+        </div>
+      )}
       {branchId && <QueueOverview branchId={branchId} />}
       <form onSubmit={joinQueue} className="form">
         <label>
